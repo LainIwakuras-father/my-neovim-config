@@ -1,48 +1,51 @@
 return {
-	"neovim/nvim-lspconfig",
-	dependencies = {
-		"williamboman/mason.nvim", -- Менеджер LSP-серверов
-		"williamboman/mason-lspconfig.nvim", -- Мост между Mason и lspconfig
-		"hrsh7th/cmp-nvim-lsp",  -- Источник автодополнения для LSP
-	},
-	config = function()
-		-- Настройка Mason для установки LSP-серверов
-		require("mason").setup()
-		require("mason-lspconfig").setup({
-			ensure_installed = { "pyright", "gopls", "tsserver", "html", "cssls" }
-		})
-
-		local lspconfig = require("lspconfig")
-		local capabilities = require('cmp_nvim_lsp').default_capabilities()
-
-		-- Общая конфигурация для всех LSP
-		local on_attach = function(client, bufnr)
-			local opts = { buffer = bufnr, remap = false }
-			vim.keymap.set("n", "gd", vim.lsp.buf.definition, opts)
-			vim.keymap.set("n", "K", vim.lsp.buf.hover, opts)
-			vim.keymap.set("n", "<leader>rn", vim.lsp.buf.rename, opts)
-			vim.keymap.set("n", "<leader>ca", vim.lsp.buf.code_action, opts)
-		end
-
-		-- Настройка для Python
-		lspconfig.pyright.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-			settings = { python = { analysis = { typeCheckingMode = "basic" } } }
-		})
-
-		-- Настройка для Go
-		lspconfig.gopls.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-			settings = { gopls = { analyses = { unusedparams = true } } }
-		})
-
-		-- Настройка для JavaScript/TypeScript
-		lspconfig.tsserver.setup({
-			capabilities = capabilities,
-			on_attach = on_attach,
-			filetypes = { "javascript", "typescript", "javascriptreact", "typescriptreact" }
-		})
-	end
+  "hrsh7th/nvim-cmp",
+  dependencies = {
+    "hrsh7th/cmp-nvim-lsp",
+    "hrsh7th/cmp-buffer",
+    "hrsh7th/cmp-path",
+    "L3MON4D3/LuaSnip",
+    "saadparwaiz1/cmp_luasnip",
+  },
+  event = "InsertEnter",
+  config = function()
+    local cmp = require("cmp")
+    local luasnip = require("luasnip")
+    
+    cmp.setup({
+      snippet = {
+        expand = function(args)
+          luasnip.lsp_expand(args.body)
+        end,
+      },
+      mapping = cmp.mapping.preset.insert({
+        ["<C-Space>"] = cmp.mapping.complete(),
+        ["<CR>"] = cmp.mapping.confirm({ select = true }),
+        ["<Tab>"] = cmp.mapping(function(fallback)
+          if cmp.visible() then
+            cmp.select_next_item()
+          elseif luasnip.expand_or_jumpable() then
+            luasnip.expand_or_jump()
+          else
+            fallback()
+          end
+        end, { "i", "s" }),
+        ["<S-Tab>"] = cmp.mapping(function(fallback)
+          if cmp.visible() then
+            cmp.select_prev_item()
+          elseif luasnip.jumpable(-1) then
+            luasnip.jump(-1)
+          else
+            fallback()
+          end
+        end, { "i", "s" }),
+      }),
+      sources = cmp.config.sources({
+        { name = "nvim_lsp" },
+        { name = "luasnip" },
+        { name = "buffer" },
+        { name = "path" },
+      }),
+    })
+  end
 }
